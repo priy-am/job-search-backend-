@@ -6,16 +6,15 @@ import jobPostRoutes from './routes/jobpostRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import applicationRoutes from './routes/applicationRoutes.js'
 
+
+dotenv.config()
 const app = express()
 const port = 3000
 
-dotenv.config()
-connectDB()
 
-
-app.use(express.json());
-app.use(cookieParser());
+// app.use(cors())
 
 app.use(cors({
   origin: 'http://localhost:3001', // Allow all origins, you can specify a specific origin if needed  
@@ -24,6 +23,9 @@ app.use(cors({
   credentials: true // Allow credentials if needed
 }));
 
+connectDB()
+app.use(express.json());
+app.use(cookieParser());
 
 
 app.get('/', (req, res) => {
@@ -36,7 +38,8 @@ app.use('/api/categories', categoryRoutes);
 // end point of job post
 app.use('/api/jobposts', jobPostRoutes);
 
-app.use("/api/auth", userRoutes);
+app.use("/api/auth", userRoutes); 
+app.use("/api/application", applicationRoutes);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
