@@ -2,36 +2,45 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-const uploadDir = "uploads/";
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
+// Max size in bytes (e.g., 5MB = 5 * 1024 * 1024)
+const DEFAULT_MAX_SIZE = 5 * 1024 * 1024; // 5 MB
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = Date.now() + path.extname(file.originalname);
-    cb(null, uniqueName);
-  },
-});
+export const getMulterUpload = (
+  folder = "uploads",
+  allowedTypes = ["image/", "application/pdf"],
+  maxSize = DEFAULT_MAX_SIZE
+) => {
+  // Ensure folder exists
+  if (!fs.existsSync(folder)) {
+    fs.mkdirSync(folder, { recursive: true });
+  }
 
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 2 * 1024 * 1024 * 1024 }, //10* 1024 *1024 for 10mb size
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, folder);
+    },
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      cb(null, Date.now() + ext);
+    },
+  });
 
-    if (!allowedTypes.includes(file.mimetype)) {
-      cb(new Error("Only PDF/DOC/DOCX files are allowed"));
-    } else {
+  const fileFilter = (req, file, cb) => {
+    const isAllowed = allowedTypes.some(type =>
+      file.mimetype.startsWith(type)
+    );
+    if (isAllowed) {
       cb(null, true);
+    } else {
+      cb(new Error("Unsupported file type."), false);
     }
-  },
-});
-export default upload;
+  };
+
+  return multer({
+    storage,
+    fileFilter,
+    limits: {
+      fileSize: maxSize, // Max size in bytes
+    },
+  });
+};

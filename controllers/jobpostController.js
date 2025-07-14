@@ -186,3 +186,42 @@ export const deleteJobPost = async (req, res) => {
     res.status(500).json({ message: "Error deleting job post", error });
   }
 };
+
+export const searchFilter = async (req, res) => {
+  const { industry, location, keyword } = req.query;
+  const filter = {};
+
+  // Map 'industry' to 'jobTitle'
+  if (industry) {
+    filter.jobTitle = { $regex: industry, $options: 'i' }; // Case-insensitive partial match
+  }
+  
+  if (location) {
+    filter.location = location;
+  }
+
+  // Match keyword across multiple fields: jobTitle, description, or skills
+  if (keyword) {
+    filter.$or = [
+      { jobTitle: { $regex: keyword, $options: 'i' } },
+      { description: { $regex: keyword, $options: 'i' } },
+      { skills: { $in: [new RegExp(keyword, 'i')] } } // Case-insensitive match in skills array
+    ];
+  }
+
+  // const orConditions = [];
+
+  // if (industry) orConditions.push({ industry });
+  // if (location) orConditions.push({ location });
+  // if (keyword) orConditions.push({ title: { $regex: keyword, $options: "i" } });
+
+  // const filter = orConditions.length ? { $or: orConditions } : {};
+
+  try {
+    const jobs = await JobPost.find(filter).sort({ createdAt: -1 });
+    res.status(200).json({ jobs });
+  } catch (error) {
+    console.log("server error", error);
+    res.status(500).json({ message: "Error fetching jobs", error });
+  }
+};

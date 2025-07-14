@@ -7,6 +7,8 @@ import userRoutes from './routes/userRoutes.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import applicationRoutes from './routes/applicationRoutes.js'
+import subscribeRoute from './routes/subscribeRoute.js'
+import blogRoutes from './routes/blogRoutes.js'
 
 
 dotenv.config()
@@ -15,6 +17,7 @@ const port = 3000
 
 
 // app.use(cors())
+
 
 app.use(cors({
   origin: 'http://localhost:3001', // Allow all origins, you can specify a specific origin if needed  
@@ -40,6 +43,9 @@ app.use('/api/jobposts', jobPostRoutes);
 
 app.use("/api/auth", userRoutes); 
 app.use("/api/application", applicationRoutes);
+app.use("/api", subscribeRoute)
+app.use("/api/blogs", blogRoutes )
+
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)

@@ -6,12 +6,15 @@ import {
   updateJobPost,
   deleteJobPost,
   getAllJobPostsGrouped,
+  searchFilter,
 } from "../controllers/jobpostController.js";
 
 const router = express.Router();
 
 // Route to get all job posts
 router.get("/getJobPosts", getAllJobPostsGrouped);
+
+router.get("/searchJobs", searchFilter)
 
 router.get("/getAllJobPosts", getAllJobPosts);
 // Route to create a new job post
