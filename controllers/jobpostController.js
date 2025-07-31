@@ -7,7 +7,6 @@ export const createJobPost = async (req, res) => {
     skills,
     role,
     experience,
-    image,
     salary,
     location,
     duration,
@@ -23,6 +22,12 @@ export const createJobPost = async (req, res) => {
     return res.status(400).json({ message: "Invalid category ID" });
   }
 
+  const image = req.file
+
+  if(!image){
+    return res.status(400).json({message: "Image is required."})
+  }
+
   try {
     const newJobPost = new JobPost({
       description,
@@ -30,7 +35,7 @@ export const createJobPost = async (req, res) => {
       salary,
       role,
       experience,
-      image,
+      image: `/uploads/${image.filename}`,
       location,
       duration,
       company,

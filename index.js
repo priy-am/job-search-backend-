@@ -13,11 +13,13 @@ import path from "path";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { verifyAndRefreshToken } from './config/auth.js';
+import chatsRoutes from './routes/chatsRoutes.js'
 
 
 dotenv.config()
 const app = express()
 const port = 3000
+
 
 
 // Fix for __dirname in ES Modules
@@ -26,6 +28,7 @@ const __dirname = dirname(__filename);
 
 // Static route to serve resumes
 app.use('/resumes', express.static(path.join(__dirname, 'resumes')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // app.use(cors())
 
 
@@ -40,7 +43,6 @@ app.use(cors({
 connectDB()
 app.use(express.json());
 app.use(cookieParser());
-
 
 app.get('/', (req, res) => {
   res.send('Hello guys!')
@@ -61,6 +63,7 @@ app.use("/api/auth", userRoutes);
 app.use("/api/application", applicationRoutes);
 app.use("/api", subscribeRoute)
 app.use("/api/blogs", blogRoutes )
+app.use("/api/chat", chatsRoutes)
 
 
 app.listen(port, () => {

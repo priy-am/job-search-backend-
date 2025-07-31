@@ -54,15 +54,15 @@ export const login = async (req, res) => {
      const token = jwt.sign(
       { id: user._id, userType: user.userType },
       JWT_SECRET,
-      { expiresIn: "30s" }
-      // { expiresIn: "7d" }
+      // { expiresIn: "30s" }
+      { expiresIn: "7d" }
     );
 
     res.cookie("token", token, {
       httpOnly: true,
       secure: false, // ⚠️ set to true in production
       sameSite: "lax",
-      maxAge: 30 * 1000
+      // maxAge: 30 * 1000 // change the same value of token expire
     });
 
     res.status(200).json({
