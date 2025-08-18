@@ -25,28 +25,8 @@ export const register = async (req, res) => {
     });
     await newUser.save();
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: newUser._id, userType: newUser.userType },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    res.cookie("token", token, {
-      httpOnly: true,
-      // secure: process.env.NODE_ENV === "production", // Set to true in production
-      secure: false, // For local development, set to false
-      sameSite: "lax",
-    });
-
     res.status(201).json({
-      message: "User registered successfully",
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        userType: newUser.userType,
-      },
+      message: "User registered successfully"
     });
   } catch (error) {
     console.error("Error in user registration:", error);
@@ -74,6 +54,7 @@ export const login = async (req, res) => {
      const token = jwt.sign(
       { id: user._id, userType: user.userType },
       JWT_SECRET,
+      // { expiresIn: "30s" }
       { expiresIn: "7d" }
     );
 
@@ -81,6 +62,7 @@ export const login = async (req, res) => {
       httpOnly: true,
       secure: false, // ⚠️ set to true in production
       sameSite: "lax",
+      // maxAge: 30 * 1000 // change the same value of token expire
     });
 
     res.status(200).json({

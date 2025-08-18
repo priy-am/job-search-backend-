@@ -7,12 +7,12 @@ export const createJobPost = async (req, res) => {
     skills,
     role,
     experience,
-    image,
     salary,
     location,
     duration,
     company,
     categoryId,
+    recruiterId,
   } = req.body;
 
   const category = await Category.findById(categoryId);
@@ -22,6 +22,12 @@ export const createJobPost = async (req, res) => {
     return res.status(400).json({ message: "Invalid category ID" });
   }
 
+  const image = req.file
+
+  if(!image){
+    return res.status(400).json({message: "Image is required."})
+  }
+
   try {
     const newJobPost = new JobPost({
       description,
@@ -29,10 +35,11 @@ export const createJobPost = async (req, res) => {
       salary,
       role,
       experience,
-      image,
+      image: `/uploads/${image.filename}`,
       location,
       duration,
       company,
+      recruiterId,
       jobTitle: category.category,
       categoryId: category._id,
     });
@@ -140,6 +147,7 @@ export const updateJobPost = async (req, res) => {
     location,
     duration,
     company,
+    recruiterId,
     categoryId,
   } = req.body;
 
@@ -156,6 +164,7 @@ export const updateJobPost = async (req, res) => {
         location,
         duration,
         company,
+        recruiterId,
         categoryId,
       },
       { new: true }
@@ -193,9 +202,9 @@ export const searchFilter = async (req, res) => {
 
   // Map 'industry' to 'jobTitle'
   if (industry) {
-    filter.jobTitle = { $regex: industry, $options: 'i' }; // Case-insensitive partial match
+    filter.jobTitle = { $regex: industry, $options: "i" }; // Case-insensitive partial match
   }
-  
+
   if (location) {
     filter.location = location;
   }
@@ -203,9 +212,9 @@ export const searchFilter = async (req, res) => {
   // Match keyword across multiple fields: jobTitle, description, or skills
   if (keyword) {
     filter.$or = [
-      { jobTitle: { $regex: keyword, $options: 'i' } },
-      { description: { $regex: keyword, $options: 'i' } },
-      { skills: { $in: [new RegExp(keyword, 'i')] } } // Case-insensitive match in skills array
+      { jobTitle: { $regex: keyword, $options: "i" } },
+      { description: { $regex: keyword, $options: "i" } },
+      { skills: { $in: [new RegExp(keyword, "i")] } }, // Case-insensitive match in skills array
     ];
   }
 
@@ -223,5 +232,30 @@ export const searchFilter = async (req, res) => {
   } catch (error) {
     console.log("server error", error);
     res.status(500).json({ message: "Error fetching jobs", error });
+  }
+};
+
+export const getJobCreatedByMe = async (req, res) => {
+  const { id } = req.params;
+  try {
+    // const jobPosts = await JobPost.findById(recruiterId: id);
+    const jobPosts = await JobPost.find({ recruiterId: id }).sort({ createdAt: -1 });
+
+    if (jobPosts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No job posts found for this recruiter",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      jobs: jobPosts,
+    });
+  } catch (error) {
+    console.log("fetching job created by me error:- ", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Internal Server error", error });
   }
 };

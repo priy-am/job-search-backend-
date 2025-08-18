@@ -9,6 +9,11 @@ import cookieParser from 'cookie-parser';
 import applicationRoutes from './routes/applicationRoutes.js'
 import subscribeRoute from './routes/subscribeRoute.js'
 import blogRoutes from './routes/blogRoutes.js'
+import path from "path";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { verifyAndRefreshToken } from './config/auth.js';
+import chatsRoutes from './routes/chatsRoutes.js'
 
 
 dotenv.config()
@@ -16,24 +21,37 @@ const app = express()
 const port = 3000
 
 
+
+// Fix for __dirname in ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Static route to serve resumes
+app.use('/resumes', express.static(path.join(__dirname, 'resumes')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // app.use(cors())
+
 
 
 app.use(cors({
   origin: 'http://localhost:3001', // Allow all origins, you can specify a specific origin if needed  
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow specific HTTP methods
-  allowedHeaders: ['Content-Type', 'Authorization'], // Allow specific headers
-  credentials: true // Allow credentials if needed
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], 
+  allowedHeaders: ['Content-Type', 'Authorization'], 
+  credentials: true 
 }));
 
 connectDB()
 app.use(express.json());
 app.use(cookieParser());
 
-
 app.get('/', (req, res) => {
   res.send('Hello guys!')
 })
+
+//for refresh the token
+app.get("/api/refresh", verifyAndRefreshToken, (req, res) => {
+  res.status(200).json({ message: "Session refreshed" });
+});
 
 
 // end pont of category
@@ -45,6 +63,7 @@ app.use("/api/auth", userRoutes);
 app.use("/api/application", applicationRoutes);
 app.use("/api", subscribeRoute)
 app.use("/api/blogs", blogRoutes )
+app.use("/api/chat", chatsRoutes)
 
 
 app.listen(port, () => {
