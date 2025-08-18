@@ -22,6 +22,7 @@ const port = 3000
 
 
 
+
 // Fix for __dirname in ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -34,7 +35,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 app.use(cors({
-  origin: 'http://localhost:3001', // Allow all origins, you can specify a specific origin if needed  
+  origin: process.env.FRONTEND_URL, // Allow all origins, you can specify a specific origin if needed  
   methods: ['GET', 'POST', 'PUT', 'DELETE'], 
   allowedHeaders: ['Content-Type', 'Authorization'], 
   credentials: true 
