@@ -59,11 +59,11 @@ export const login = async (req, res) => {
     );
 
     res.cookie("token", token, {
-      httpOnly: true,
-      secure: true, // ⚠️ set to true in production
-      sameSite: "none",
-      // maxAge: 30 * 1000 // change the same value of token expire
-    });
+  httpOnly: true,
+  secure: true,
+  sameSite: "None",
+  path: "/",
+});
 
     res.status(200).json({
       message: `${user.name} WellCome Back`,
