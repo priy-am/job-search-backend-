@@ -36,8 +36,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
 app.use(cors({
   origin: process.env.FRONTEND_URL, // Allow all origins, you can specify a specific origin if needed  
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], 
-  allowedHeaders: ['Content-Type', 'Authorization'], 
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Accept"],
   credentials: true 
 }));
 
