@@ -67,6 +67,7 @@ export const login = async (req, res) => {
 
     res.status(200).json({
       message: `${user.name} WellCome Back`,
+      token, 
       user: {
         id: user._id,
         name: user.name,
@@ -99,7 +100,9 @@ export const logout = async(req, res) =>{
 export const getMe = async(req, res) =>{
   try {
 
-    const token = req.cookies.token;
+    // const token = req.cookies.token;
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(" ")[1];
 
     if(!token){
       return res.status(401).json({message:"Unauthorized"})
