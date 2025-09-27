@@ -26,7 +26,7 @@ export const register = async (req, res) => {
     await newUser.save();
 
     res.status(201).json({
-      message: "User registered successfully"
+      message: "User registered successfully",
     });
   } catch (error) {
     console.error("Error in user registration:", error);
@@ -51,7 +51,7 @@ export const login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-     const token = jwt.sign(
+    const token = jwt.sign(
       { id: user._id, userType: user.userType },
       JWT_SECRET,
       // { expiresIn: "30s" }
@@ -59,15 +59,17 @@ export const login = async (req, res) => {
     );
 
     res.cookie("token", token, {
-  httpOnly: true,
-  secure: true,
-  sameSite: "None",
-  path: "/",
-});
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+      // secure: false, // for localhost
+      // sameSite: "lax",
+      path: "/",
+    });
 
     res.status(200).json({
       message: `${user.name} WellCome Back`,
-      token, 
+      token,
       user: {
         id: user._id,
         name: user.name,
@@ -75,52 +77,50 @@ export const login = async (req, res) => {
         userType: user.userType,
       },
     });
-
   } catch (error) {
     console.error("Error in user login:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-export const logout = async(req, res) =>{
+export const logout = async (req, res) => {
   try {
     res.clearCookie("token", {
       httpOnly: true,
       secure: true, // ⚠️ set to true in production
       sameSite: "none",
+      // secure: false, // for localhost
+      // sameSite: "lax",
     });
     res.status(200).json({ message: "Logout successful" });
   } catch (error) {
     console.error("Error in user logout:", error);
     res.status(500).json({ message: "Internal server error" });
   }
-}
+};
 
-
-export const getMe = async(req, res) =>{
+export const getMe = async (req, res) => {
   try {
+    const token = req.cookies.token;
+    // const authHeader = req.headers.authorization;
+    // const token = authHeader && authHeader.split(" ")[1];
 
-    // const token = req.cookies.token;
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(" ")[1];
-
-    if(!token){
-      return res.status(401).json({message:"Unauthorized"})
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    const user = await User.findById(decoded.id).select("-password")
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select("-password");
 
-    if(!user){
-      return res.status(404).json({message:"User not found"})
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({user})
-    
+    res.json({ user });
   } catch (error) {
     console.error("Error in getting user info:", error);
     res.status(500).json({
-      message:"Internal server error"
-    })
+      message: "Internal server error",
+    });
   }
-}
+};
