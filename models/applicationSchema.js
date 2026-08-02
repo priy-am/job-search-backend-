@@ -11,14 +11,12 @@ const applicationSchema = new mongoose.Schema({
   mobile: {
     type: String,
     required: true,
-    match: /^[6-9]\d{9}$/,
     length: 10,
   },
   email: {
     type: String,
     required: true,
     lowercase: true,
-    match: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
   },
   experience: {
     type: Number,
@@ -34,16 +32,30 @@ const applicationSchema = new mongoose.Schema({
     trim: true,
   },
   resume: {
-    type: String, // store as file path or URL
+    type: String,
     required: true,
   },
   jobId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Job", // assuming a Job model exists
+    ref: "JobPost",
     required: true,
+  },
+  applicantId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: false,
+  },
+  status: {
+    type: String,
+    enum: ["Submitted", "Under Review", "Shortlisted", "Rejected", "Accepted"],
+    default: "Submitted",
   },
 }, {
   timestamps: true,
 });
 
-export const  Application = model("Application", applicationSchema )
+applicationSchema.index({ jobId: 1, createdAt: -1 });
+applicationSchema.index({ email: 1 });
+applicationSchema.index({ applicantId: 1 });
+
+export const Application = model("Application", applicationSchema);
