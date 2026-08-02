@@ -1,6 +1,14 @@
 import { JobPost } from "../models/jobpostSchema.js";
 import { Category } from "../models/categorySchema.js";
 
+const normalizeSkills = (skillsInput) => {
+  if (Array.isArray(skillsInput)) return skillsInput.map(s => String(s).trim()).filter(Boolean);
+  if (typeof skillsInput === "string") return skillsInput.split(",").map(s => s.trim()).filter(Boolean);
+  return [];
+};
+
+const escapeRegex = (text = "") => text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+
 export const createJobPost = async (req, res) => {
   const {
     description,
@@ -15,31 +23,30 @@ export const createJobPost = async (req, res) => {
     recruiterId,
   } = req.body;
 
-  const category = await Category.findById(categoryId);
-  console.log(category);
-
-  if (!category) {
-    return res.status(400).json({ message: "Invalid category ID" });
-  }
-
-  const image = req.file
-
-  if(!image){
-    return res.status(400).json({message: "Image is required."})
-  }
-
   try {
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      return res.status(400).json({ message: "Invalid category ID" });
+    }
+
+    const image = req.file;
+    if (!image) {
+      return res.status(400).json({ message: "Image is required." });
+    }
+
+    const finalRecruiterId = req.user?.id || recruiterId;
+
     const newJobPost = new JobPost({
       description,
-      skills,
-      salary,
+      skills: normalizeSkills(skills),
+      salary: Number(salary) || 0,
       role,
-      experience,
+      experience: Number(experience) || 0,
       image: `/uploads/${image.filename}`,
       location,
       duration,
       company,
-      recruiterId,
+      recruiterId: finalRecruiterId,
       jobTitle: category.category,
       categoryId: category._id,
     });
@@ -47,7 +54,7 @@ export const createJobPost = async (req, res) => {
     res.status(201).json(newJobPost);
   } catch (error) {
     console.error("Error creating job post:", error);
-    res.status(500).json({ message: "Error creating job post", error });
+    res.status(500).json({ message: "Error creating job post", error: error.message });
   }
 };
 
@@ -55,27 +62,21 @@ export const getAllJobPosts = async (req, res) => {
   try {
     const jobPosts = await JobPost.find()
       .populate("categoryId", "category")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    // group job posts by every category
     const grouped = {};
-
     for (const post of jobPosts) {
-      const categoryName = post.categoryId?.category || "Unknown";
-
+      const categoryName = post.categoryId?.category || "Other";
       if (!grouped[categoryName]) {
         grouped[categoryName] = [];
       }
-
       grouped[categoryName].push(post);
     }
-    const response = { jobPosts: jobPosts, grouped: grouped };
-    // return grouped;
 
-    // res.status(200).json(jobPosts);
-    res.status(200).json(response);
+    res.status(200).json({ jobPosts, grouped });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching job posts", error });
+    res.status(500).json({ message: "Error fetching job posts", error: error.message });
   }
 };
 
@@ -84,7 +85,7 @@ export const getAllJobPostsGrouped = async (req, res) => {
     const grouped = await JobPost.aggregate([
       {
         $lookup: {
-          from: "categories", // collection name
+          from: "categories",
           localField: "categoryId",
           foreignField: "_id",
           as: "categoryInfo",
@@ -96,8 +97,8 @@ export const getAllJobPostsGrouped = async (req, res) => {
       {
         $group: {
           _id: "$categoryInfo.category",
-          image: { $first: "$categoryInfo.image" }, // Get the category image
-          color: { $first: "$categoryInfo.color" }, // Get the category color
+          image: { $first: "$categoryInfo.image" },
+          color: { $first: "$categoryInfo.color" },
           count: { $sum: 1 },
           posts: { $push: "$$ROOT" },
         },
@@ -116,22 +117,20 @@ export const getAllJobPostsGrouped = async (req, res) => {
 
     res.status(200).json({ grouped });
   } catch (error) {
-    res.status(500).json({ message: "Error grouping job posts", error });
+    res.status(500).json({ message: "Error grouping job posts", error: error.message });
   }
 };
 
 export const getJobPostById = async (req, res) => {
   const { id } = req.params;
   try {
-    const jobPosts = await JobPost.findById(id);
-    if (!jobPosts) {
-      return res.status(404).json({
-        message: "Job post not found",
-      });
+    const jobPost = await JobPost.findById(id).populate("categoryId").lean();
+    if (!jobPost) {
+      return res.status(404).json({ message: "Job post not found" });
     }
-    res.status(200).json(jobPosts);
+    res.status(200).json(jobPost);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching job post", error });
+    res.status(500).json({ message: "Error fetching job post", error: error.message });
   }
 };
 
@@ -152,23 +151,23 @@ export const updateJobPost = async (req, res) => {
   } = req.body;
 
   try {
+    const updateData = {};
+    if (description) updateData.description = description;
+    if (skills) updateData.skills = normalizeSkills(skills);
+    if (salary !== undefined) updateData.salary = Number(salary);
+    if (role) updateData.role = role;
+    if (experience !== undefined) updateData.experience = Number(experience);
+    if (image) updateData.image = image;
+    if (location) updateData.location = location;
+    if (duration) updateData.duration = duration;
+    if (company) updateData.company = company;
+    if (categoryId) updateData.categoryId = categoryId;
+
     const updatedJobPost = await JobPost.findByIdAndUpdate(
       id,
-      {
-        description,
-        skills,
-        salary,
-        role,
-        experience,
-        image,
-        location,
-        duration,
-        company,
-        recruiterId,
-        categoryId,
-      },
+      updateData,
       { new: true }
-    );
+    ).lean();
 
     if (!updatedJobPost) {
       return res.status(404).json({ message: "Job post not found" });
@@ -176,7 +175,7 @@ export const updateJobPost = async (req, res) => {
 
     res.status(200).json(updatedJobPost);
   } catch (error) {
-    res.status(500).json({ message: "Error updating job post", error });
+    res.status(500).json({ message: "Error updating job post", error: error.message });
   }
 };
 
@@ -185,14 +184,13 @@ export const deleteJobPost = async (req, res) => {
 
   try {
     const deletedJobPost = await JobPost.findByIdAndDelete(id);
-
     if (!deletedJobPost) {
       return res.status(404).json({ message: "Job post not found" });
     }
 
     res.status(200).json({ message: "Job post deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Error deleting job post", error });
+    res.status(500).json({ message: "Error deleting job post", error: error.message });
   }
 };
 
@@ -200,62 +198,47 @@ export const searchFilter = async (req, res) => {
   const { industry, location, keyword } = req.query;
   const filter = {};
 
-  // Map 'industry' to 'jobTitle'
   if (industry) {
-    filter.jobTitle = { $regex: industry, $options: "i" }; // Case-insensitive partial match
+    const safeIndustry = escapeRegex(industry);
+    filter.jobTitle = { $regex: safeIndustry, $options: "i" };
   }
 
   if (location) {
-    filter.location = location;
+    const safeLocation = escapeRegex(location);
+    filter.location = { $regex: safeLocation, $options: "i" };
   }
 
-  // Match keyword across multiple fields: jobTitle, description, or skills
   if (keyword) {
+    const safeKeyword = escapeRegex(keyword);
     filter.$or = [
-      { jobTitle: { $regex: keyword, $options: "i" } },
-      { description: { $regex: keyword, $options: "i" } },
-      { skills: { $in: [new RegExp(keyword, "i")] } }, // Case-insensitive match in skills array
+      { jobTitle: { $regex: safeKeyword, $options: "i" } },
+      { description: { $regex: safeKeyword, $options: "i" } },
+      { role: { $regex: safeKeyword, $options: "i" } },
+      { company: { $regex: safeKeyword, $options: "i" } },
+      { skills: { $in: [new RegExp(safeKeyword, "i")] } },
     ];
   }
 
-  // const orConditions = [];
-
-  // if (industry) orConditions.push({ industry });
-  // if (location) orConditions.push({ location });
-  // if (keyword) orConditions.push({ title: { $regex: keyword, $options: "i" } });
-
-  // const filter = orConditions.length ? { $or: orConditions } : {};
-
   try {
-    const jobs = await JobPost.find(filter).sort({ createdAt: -1 });
-    res.status(200).json({ jobs });
+    const jobs = await JobPost.find(filter).sort({ createdAt: -1 }).lean();
+    res.status(200).json({ jobs: jobs || [] });
   } catch (error) {
-    console.log("server error", error);
-    res.status(500).json({ message: "Error fetching jobs", error });
+    console.error("searchFilter error:", error);
+    res.status(500).json({ message: "Error fetching jobs", error: error.message });
   }
 };
 
 export const getJobCreatedByMe = async (req, res) => {
-  const { id } = req.params;
+  const recruiterId = req.user?.id || req.params.id;
   try {
-    // const jobPosts = await JobPost.findById(recruiterId: id);
-    const jobPosts = await JobPost.find({ recruiterId: id }).sort({ createdAt: -1 });
-
-    if (jobPosts.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No job posts found for this recruiter",
-      });
-    }
+    const jobPosts = await JobPost.find({ recruiterId }).sort({ createdAt: -1 }).lean();
 
     res.status(200).json({
       success: true,
-      jobs: jobPosts,
+      jobs: jobPosts || [],
     });
   } catch (error) {
-    console.log("fetching job created by me error:- ", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Internal Server error", error });
+    console.error("fetching job created by me error: ", error);
+    res.status(500).json({ success: false, message: "Internal Server error", error: error.message });
   }
 };

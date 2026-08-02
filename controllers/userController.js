@@ -1,8 +1,9 @@
 import { User } from "../models/userSchema.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { getCookieOptions } from "../config/cookieOptions.js";
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const getJwtSecret = () => process.env.JWT_SECRET || "job_search_secret_key_2025";
 
 export const register = async (req, res) => {
   try {
@@ -44,7 +45,7 @@ export const login = async (req, res) => {
     }
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: "Invalid Credentials" });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
     const isMatch = await bcrypt.compare(password, user.password);
 
@@ -53,22 +54,14 @@ export const login = async (req, res) => {
     }
     const token = jwt.sign(
       { id: user._id, userType: user.userType },
-      JWT_SECRET,
-      // { expiresIn: "30s" }
+      getJwtSecret(),
       { expiresIn: "7d" }
     );
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "None",
-      // secure: false, // for localhost
-      // sameSite: "lax",
-      path: "/",
-    });
+    res.cookie("token", token, getCookieOptions());
 
     res.status(200).json({
-      message: `${user.name} WellCome Back`,
+      message: `${user.name} Welcome Back`,
       token,
       user: {
         id: user._id,
@@ -85,13 +78,7 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    res.clearCookie("token", {
-      httpOnly: true,
-      secure: true, // ⚠️ set to true in production
-      sameSite: "none",
-      // secure: false, // for localhost
-      // sameSite: "lax",
-    });
+    res.clearCookie("token", getCookieOptions());
     res.status(200).json({ message: "Logout successful" });
   } catch (error) {
     console.error("Error in user logout:", error);
@@ -101,16 +88,24 @@ export const logout = async (req, res) => {
 
 export const getMe = async (req, res) => {
   try {
-    const token = req.cookies.token;
-    // const authHeader = req.headers.authorization;
-    // const token = authHeader && authHeader.split(" ")[1];
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader && authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+    const token = req.cookies?.token || bearerToken;
 
     if (!token) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return res.status(401).json({ message: "Unauthorized: No token provided" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select("-password");
+    let decoded;
+    try {
+      decoded = jwt.verify(token, getJwtSecret());
+    } catch (jwtErr) {
+      res.clearCookie("token", getCookieOptions());
+      return res.status(401).json({ message: "Invalid or expired session. Please login again." });
+    }
+
+    const userId = decoded.id || decoded._id;
+    const user = await User.findById(userId).select("-password");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });

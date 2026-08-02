@@ -25,19 +25,23 @@ export const updateCategory = async (req, res) => {
   const { category, image, color } = req.body;
 
   try {
+    const updateData = {};
+    if (category) updateData.category = category;
+    if (image) updateData.image = image;
+    if (color) updateData.color = color;
+
     const updatedCategory = await Category.findByIdAndUpdate(
       id,
-      { category },
-      {image},
-      {color},
+      updateData,
       { new: true }
     );
+
     if (!updatedCategory) {
       return res.status(404).json({ message: "Category not found" });
     }
     res.status(200).json(updatedCategory);
   } catch (error) {
-    res.status(500).json({ message: "Error updating category", error });
+    res.status(500).json({ message: "Error updating category", error: error.message });
   }
 };
 
